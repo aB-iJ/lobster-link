@@ -1,6 +1,8 @@
 # Geometric Embeddings Experiments
 
-Phase 0: Concept Validation (2-3 weeks)
+**Parallel Development Approach**: Platform building and experimental validation proceed simultaneously with daily progress updates.
+
+**Core Philosophy**: Innovation as "building foundations upward while connecting castle in the air downward" – we start with bold frameworks and rationalize them iteratively.
 
 ## Goal
 Quantitative comparison of Euclidean vs Hyperbolic vs Spherical embeddings on standard semantic tasks.
@@ -16,10 +18,19 @@ Quantitative comparison of Euclidean vs Hyperbolic vs Spherical embeddings on st
 - Spearman's correlation (ρ)
 - Training time
 
-## Success Criteria
-- Hyperbolic embeddings achieve at least **20% lower mean rank** than Euclidean on WordNet
-- Or spherical embeddings show statistically significant improvement on any task
-- If no significant improvement, project pauses
+## Success Criteria (Exploratory Mindset)
+
+**Philosophy**: Innovation often starts with a bold conceptual framework that is later grounded in rigor. We embrace exploratory research.
+
+**Quantitative Goals**:
+- ≥10% improvement over Euclidean baseline is considered **positive signal**
+- We're looking for **proof of concept**, not production-ready performance
+- "Unreasonable" aspects should be **rationalized**, not rejected
+
+**Decision Points**:
+- If results show <5% improvement: reconsider approach, but continue platform development
+- If results show 5-10% improvement: promising, continue both platform and experiments
+- If results show >10% improvement: strong signal, allocate more resources
 
 ## Directory Structure
 ```
