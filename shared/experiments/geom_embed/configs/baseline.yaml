@@ -1,0 +1,39 @@
+# Baseline experiment configuration
+
+experiment:
+  name: "euclidean_baseline"
+  description: "Euclidean embedding baseline on WordNet hierarchy"
+  seed: 42
+
+data:
+  dataset: "WordNet"
+  path: "data/wordnet/"
+  split: "standard"
+  vocab_size: 50000
+
+model:
+  geometry: "euclidean"  # euclidean, hyperbolic, spherical
+  embedding_dim: 300
+  init_scale: 0.01
+  manifold_args:
+    # Euclidean has no special args
+    # For hyperbolic: curvature: -1.0
+    # For spherical: radius: 1.0
+
+training:
+  optimizer: "adam"
+  learning_rate: 0.001
+  batch_size: 512
+  num_epochs: 50
+  negative_samples: 10
+  margin: 1.0
+
+evaluation:
+  tasks: ["hierarchical", "analogy", "similarity"]
+  metrics: ["mean_rank", "map", "spearman"]
+  eval_frequency: 5  # epochs
+
+logging:
+  log_dir: "results/euclidean_baseline"
+  save_checkpoints: true
+  checkpoint_frequency: 10  # epochs
