@@ -1,0 +1,17 @@
+2026-03-31 00:03:49,940 [INFO] Starting experiment: test_quick
+2026-03-31 00:03:49,941 [INFO] Configuration: {'experiment': {'name': 'test_quick', 'description': 'Quick test of training pipeline', 'seed': 42}, 'data': {'path': 'data/', 'datasets': ['wordnet', 'bats', 'simlex'], 'vocab_size': 100}, 'model': {'geometry': 'euclidean', 'embedding_dim': 50, 'init_scale': 0.01}, 'training': {'optimizer': 'adam', 'learning_rate': 0.001, 'batch_size': 32, 'num_epochs': 5, 'negative_samples': 5, 'negative_sampler': 'uniform', 'loss': 'geometric', 'margin': 1.0}, 'evaluation': {'tasks': ['hierarchical', 'analogy', 'similarity'], 'metrics': ['mean_rank', 'map', 'spearman'], 'eval_frequency': 2}, 'logging': {'log_dir': 'results/test_quick', 'save_checkpoints': False, 'checkpoint_frequency': 10}}
+2026-03-31 00:03:49,941 [INFO] Using device: mps
+2026-03-31 00:03:49,941 [INFO] Loading datasets...
+2026-03-31 00:03:49,941 [INFO] Loaded WordNet dataset with 6 relations, 10 unique words
+2026-03-31 00:03:49,941 [INFO] Loaded BATS dataset with 8 analogies, 16 unique words
+2026-03-31 00:03:49,941 [INFO] Loaded SimLex dataset with 5 similarity pairs, 10 unique words
+2026-03-31 00:03:49,941 [INFO] Combined dataset: 30 unique words, 19 total relations
+2026-03-31 00:03:49,941 [INFO] Dataset loaded: 30 words, 19 relations
+2026-03-31 00:03:50,435 [INFO] Starting training...
+2026-03-31 00:03:51,182 [INFO] Evaluation: avg positive distance = 0.0863, avg negative distance = 0.0964
+2026-03-31 00:03:51,182 [INFO] Distance ratio (neg/pos): 0.12
+2026-03-31 00:03:51,206 [INFO] Evaluation: avg positive distance = 0.0776, avg negative distance = 0.1058
+2026-03-31 00:03:51,206 [INFO] Distance ratio (neg/pos): 0.36
+2026-03-31 00:03:51,207 [INFO] Training completed in 0.77 seconds
+2026-03-31 00:03:51,210 [INFO] Model saved to results/test_quick/final_model.pt
+2026-03-31 00:03:51,261 [INFO] Embeddings saved to results/test_quick/embeddings.npy

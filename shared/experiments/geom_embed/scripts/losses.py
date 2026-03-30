@@ -6,7 +6,7 @@ Loss functions for geometric embeddings.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 
 class ContrastiveLoss(nn.Module):
     """Contrastive loss for semantic relations."""

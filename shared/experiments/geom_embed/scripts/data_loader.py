@@ -175,6 +175,10 @@ class CombinedDataset:
     
     def get_word(self, idx: int) -> Optional[str]:
         return self.idx_to_word.get(idx)
+    
+    def get_vocab(self) -> List[str]:
+        """Get vocabulary as list."""
+        return list(self.vocab)
 
 def load_dataset(config: Dict) -> Optional[CombinedDataset]:
     """Load dataset based on configuration."""

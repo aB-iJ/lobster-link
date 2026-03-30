@@ -1,0 +1,36 @@
+# Quick test configuration
+
+experiment:
+  name: "test_quick"
+  description: "Quick test of training pipeline"
+  seed: 42
+
+data:
+  path: "data/"
+  datasets: ["wordnet", "bats", "simlex"]
+  vocab_size: 100  # Small for testing
+
+model:
+  geometry: "euclidean"
+  embedding_dim: 50  # Small dimension
+  init_scale: 0.01
+
+training:
+  optimizer: "adam"
+  learning_rate: 0.001
+  batch_size: 32  # Small batch
+  num_epochs: 5  # Few epochs
+  negative_samples: 5
+  negative_sampler: "uniform"
+  loss: "geometric"
+  margin: 1.0
+
+evaluation:
+  tasks: ["hierarchical", "analogy", "similarity"]
+  metrics: ["mean_rank", "map", "spearman"]
+  eval_frequency: 2  # epochs
+
+logging:
+  log_dir: "results/test_quick"
+  save_checkpoints: false
+  checkpoint_frequency: 10
