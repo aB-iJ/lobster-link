@@ -1,23 +1,21 @@
-# Baseline experiment configuration
+# Spherical embeddings experiment
 
 experiment:
-  name: "euclidean_baseline"
-  description: "Euclidean embedding baseline on semantic relations"
+  name: "spherical_embeddings"
+  description: "Spherical embeddings (unit sphere) on semantic relations"
   seed: 42
 
 data:
   path: "data/"
-  datasets: ["wordnet", "bats", "simlex"]  # datasets to load
+  datasets: ["wordnet", "bats", "simlex"]
   vocab_size: 1000  # will be updated automatically
 
 model:
-  geometry: "euclidean"  # euclidean, hyperbolic, spherical
+  geometry: "spherical"
   embedding_dim: 300
   init_scale: 0.01
   manifold_args:
-    # Euclidean has no special args
-    # For hyperbolic: curvature: -1.0
-    # For spherical: radius: 1.0
+    radius: 1.0
 
 training:
   optimizer: "adam"
@@ -35,6 +33,6 @@ evaluation:
   eval_frequency: 5  # epochs
 
 logging:
-  log_dir: "results/euclidean_baseline"
+  log_dir: "results/spherical_embeddings"
   save_checkpoints: true
   checkpoint_frequency: 10  # epochs

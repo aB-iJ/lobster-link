@@ -12,7 +12,10 @@ import torch.optim as optim
 from pathlib import Path
 import logging
 import time
+import random
+import numpy as np
 from datetime import datetime
+from typing import List, Tuple, Dict
 
 # Geoopt will be imported conditionally
 try:
@@ -21,6 +24,18 @@ try:
 except ImportError:
     GEOOPT_AVAILABLE = False
     print("WARNING: geoopt not installed. Install with: pip install geoopt")
+
+# Import our modules
+import sys
+sys.path.append(str(Path(__file__).parent))
+
+try:
+    from data_loader import load_dataset, CombinedDataset
+    from losses import create_loss_function, GeometricLoss
+    from negative_sampler import create_negative_sampler, NegativeSampler
+except ImportError as e:
+    print(f"WARNING: Failed to import local modules: {e}")
+    print("Make sure data_loader.py, losses.py, and negative_sampler.py are in the same directory")
 
 def setup_logging(log_dir):
     """Setup logging to file and console."""
@@ -97,6 +112,88 @@ def load_config(config_path):
         config = yaml.safe_load(f)
     return config
 
+def create_training_batch(dataset: CombinedDataset, sampler: NegativeSampler, 
+                          batch_size: int, device: torch.device):
+    """Create a batch of training examples."""
+    triplets = dataset.get_relation_triplets()
+    if not triplets:
+        return None, None, None, None
+    
+    # Sample random triplets
+    if len(triplets) > batch_size:
+        batch_indices = random.sample(range(len(triplets)), batch_size)
+    else:
+        batch_indices = list(range(len(triplets)))
+    
+    anchors, positives, relations = [], [], []
+    for idx in batch_indices:
+        anchor_idx, positive_idx, rel = triplets[idx]
+        anchors.append(anchor_idx)
+        positives.append(positive_idx)
+        relations.append(rel)
+    
+    # Sample negatives
+    anchor_words = [dataset.get_word(idx) for idx in anchors]
+    positive_words = [dataset.get_word(idx) for idx in positives]
+    negative_words_list = sampler.sample_batch(anchor_words, positive_words, relations)
+    
+    # Convert to tensors
+    anchor_tensor = torch.tensor(anchors, dtype=torch.long, device=device)
+    positive_tensor = torch.tensor(positives, dtype=torch.long, device=device)
+    
+    # For each anchor, we'll use one negative (first from the list)
+    negatives = [negs[0] for negs in negative_words_list]
+    negative_idxs = [dataset.get_word_index(neg) for neg in negatives]
+    negative_tensor = torch.tensor(negative_idxs, dtype=torch.long, device=device)
+    
+    return anchor_tensor, positive_tensor, negative_tensor, relations
+
+def evaluate_model(model: GeometricEmbedding, dataset: CombinedDataset, 
+                   device: torch.device, logger: logging.Logger):
+    """Simple evaluation: compute average distance for positive vs negative pairs."""
+    model.eval()
+    triplets = dataset.get_relation_triplets()
+    
+    if not triplets:
+        return 0.0, 0.0
+    
+    # Sample some pairs for evaluation
+    eval_size = min(100, len(triplets))
+    eval_indices = random.sample(range(len(triplets)), eval_size)
+    
+    pos_distances, neg_distances = [], []
+    
+    with torch.no_grad():
+        for idx in eval_indices:
+            anchor_idx, positive_idx, rel = triplets[idx]
+            
+            # Get embeddings
+            anchor_emb = model(torch.tensor([anchor_idx], device=device))
+            positive_emb = model(torch.tensor([positive_idx], device=device))
+            
+            # Positive distance
+            pos_dist = model.distance(anchor_emb, positive_emb).item()
+            pos_distances.append(pos_dist)
+            
+            # Sample a random negative
+            negative_candidates = [i for i in range(dataset.get_vocab_size()) 
+                                  if i != anchor_idx and i != positive_idx]
+            if negative_candidates:
+                neg_idx = random.choice(negative_candidates)
+                negative_emb = model(torch.tensor([neg_idx], device=device))
+                neg_dist = model.distance(anchor_emb, negative_emb).item()
+                neg_distances.append(neg_dist)
+    
+    model.train()
+    
+    if pos_distances and neg_distances:
+        avg_pos = np.mean(pos_distances)
+        avg_neg = np.mean(neg_distances)
+        logger.info(f"Evaluation: avg positive distance = {avg_pos:.4f}, avg negative distance = {avg_neg:.4f}")
+        return avg_pos, avg_neg
+    else:
+        return 0.0, 0.0
+
 def main():
     parser = argparse.ArgumentParser(description="Train geometric embeddings")
     parser.add_argument("--config", type=str, required=True,
@@ -115,13 +212,36 @@ def main():
     logger.info(f"Configuration: {config}")
     logger.info(f"Using device: {device}")
     
+    # Load dataset
+    logger.info("Loading datasets...")
+    dataset = load_dataset(config)
+    if dataset is None:
+        logger.error("Failed to load dataset")
+        return
+    
+    vocab_size = dataset.get_vocab_size()
+    logger.info(f"Dataset loaded: {vocab_size} words, {len(dataset.all_relations)} relations")
+    
+    # Update vocab size in config for model initialization
+    config['data']['vocab_size'] = vocab_size
+    
     # Initialize model
     model = GeometricEmbedding(
-        vocab_size=config['data']['vocab_size'],
+        vocab_size=vocab_size,
         embedding_dim=config['model']['embedding_dim'],
         geometry=config['model']['geometry'],
         **config['model'].get('manifold_args', {})
     ).to(device)
+    
+    # Create loss function and negative sampler
+    loss_fn = create_loss_function(config)
+    loss_fn = loss_fn.to(device)
+    
+    negative_sampler = create_negative_sampler(
+        config, 
+        dataset.get_vocab(), 
+        dataset.word_to_idx
+    )
     
     # Optimizer
     if config['training']['optimizer'] == "adam":
@@ -129,29 +249,48 @@ def main():
     else:
         optimizer = optim.SGD(model.parameters(), lr=config['training']['learning_rate'])
     
-    # Training loop (simplified - actual implementation needs data loading)
+    # Training loop
     logger.info("Starting training...")
     start_time = time.time()
     
-    for epoch in range(config['training']['num_epochs']):
-        # TODO: Implement actual data loading and training
+    batch_size = config['training']['batch_size']
+    num_epochs = config['training']['num_epochs']
+    
+    for epoch in range(num_epochs):
         epoch_loss = 0.0
+        num_batches = 0
         
-        # Simulated training step
-        optimizer.zero_grad()
-        # TODO: Compute actual loss
-        loss = torch.tensor(0.0, requires_grad=True)
-        loss.backward()
-        optimizer.step()
+        # Create training batch
+        anchor_idx, positive_idx, negative_idx, relations = create_training_batch(
+            dataset, negative_sampler, batch_size, device
+        )
         
-        epoch_loss = loss.item()
+        if anchor_idx is not None:
+            # Forward pass
+            anchor_emb = model(anchor_idx)
+            positive_emb = model(positive_idx)
+            negative_emb = model(negative_idx)
+            
+            # Compute loss
+            loss = loss_fn(anchor_emb, positive_emb, negative_emb)
+            
+            # Backward pass
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            epoch_loss = loss.item()
+            num_batches = 1
         
+        # Logging
         if (epoch + 1) % config['logging'].get('checkpoint_frequency', 10) == 0:
-            logger.info(f"Epoch {epoch+1}/{config['training']['num_epochs']}, Loss: {epoch_loss:.4f}")
+            logger.info(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
         
-        # TODO: Add evaluation
+        # Evaluation
         if (epoch + 1) % config['evaluation']['eval_frequency'] == 0:
-            logger.info(f"Evaluation at epoch {epoch+1} - TODO")
+            avg_pos, avg_neg = evaluate_model(model, dataset, device, logger)
+            diff_ratio = (avg_neg - avg_pos) / max(avg_pos, 1e-8)
+            logger.info(f"Distance ratio (neg/pos): {diff_ratio:.2f}")
     
     total_time = time.time() - start_time
     logger.info(f"Training completed in {total_time:.2f} seconds")
@@ -160,9 +299,20 @@ def main():
     save_path = Path(config['logging']['log_dir']) / "final_model.pt"
     torch.save({
         'model_state_dict': model.state_dict(),
-        'config': config
+        'config': config,
+        'vocab': dataset.get_vocab(),
+        'word_to_idx': dataset.word_to_idx
     }, save_path)
     logger.info(f"Model saved to {save_path}")
+    
+    # Save embeddings for visualization
+    embeddings_path = Path(config['logging']['log_dir']) / "embeddings.npy"
+    with torch.no_grad():
+        all_indices = torch.arange(vocab_size, device=device)
+        all_embeddings = model(all_indices).cpu().numpy()
+        np.save(embeddings_path, all_embeddings)
+    
+    logger.info(f"Embeddings saved to {embeddings_path}")
 
 if __name__ == "__main__":
     main()
