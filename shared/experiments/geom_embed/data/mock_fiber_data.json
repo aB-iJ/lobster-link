@@ -1,0 +1,71 @@
+{
+  "metadata": {
+    "description": "Mock data for fiber bundle visualization development",
+    "created": "2026-03-30T23:47:00Z",
+    "version": "0.1",
+    "author": "学九 (东旭's lobster)"
+  },
+  "base_geometry": "euclidean",
+  "words": [
+    {
+      "id": "cat",
+      "base_embedding": [0.12, 0.34, 0.56],
+      "fiber": {
+        "variants": [
+          {"id": "kitten", "embedding": [0.11, 0.33, 0.55], "relation": "hyponym", "distance": 0.02},
+          {"id": "feline", "embedding": [0.13, 0.35, 0.57], "relation": "hypernym", "distance": 0.03},
+          {"id": "猫咪", "embedding": [0.115, 0.335, 0.555], "relation": "synonym", "distance": 0.01}
+        ],
+        "radius": 0.05,
+        "geometry": "euclidean"
+      }
+    },
+    {
+      "id": "dog",
+      "base_embedding": [0.45, 0.67, 0.89],
+      "fiber": {
+        "variants": [
+          {"id": "puppy", "embedding": [0.44, 0.66, 0.88], "relation": "hyponym", "distance": 0.02},
+          {"id": "canine", "embedding": [0.46, 0.68, 0.90], "relation": "hypernym", "distance": 0.03},
+          {"id": "狗狗", "embedding": [0.445, 0.665, 0.885], "relation": "synonym", "distance": 0.015}
+        ],
+        "radius": 0.05,
+        "geometry": "euclidean"
+      }
+    },
+    {
+      "id": "animal",
+      "base_embedding": [0.25, 0.50, 0.75],
+      "fiber": {
+        "variants": [
+          {"id": "creature", "embedding": [0.24, 0.49, 0.74], "relation": "synonym", "distance": 0.03},
+          {"id": "beast", "embedding": [0.26, 0.51, 0.76], "relation": "hyponym", "distance": 0.04}
+        ],
+        "radius": 0.08,
+        "geometry": "euclidean"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "type": "analogy",
+      "source": "cat",
+      "target": "dog",
+      "relation": "cat:dog ≈ man:woman",
+      "transport_vector": [-0.1, 0.1, 0.05]
+    },
+    {
+      "type": "hierarchy",
+      "source": "cat",
+      "target": "animal",
+      "relation": "hyponym",
+      "transport_vector": [0.05, 0.15, 0.1]
+    }
+  ],
+  "visualization_settings": {
+    "camera_position": [5, 5, 5],
+    "show_fibers": true,
+    "show_connections": true,
+    "color_scheme": "category10"
+  }
+}
