@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>董学九 - 运行中</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: none;
+    user-select: none;
+    -webkit-user-select: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+  }
+
+  .lobster {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+  }
+
+  .name {
+    font-size: 36px;
+    font-weight: 300;
+    letter-spacing: 8px;
+    color: #ffffff;
+    margin-bottom: 8px;
+  }
+
+  .status {
+    font-size: 14px;
+    color: #666;
+    letter-spacing: 2px;
+    margin-bottom: 60px;
+  }
+
+  .status .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    margin-right: 8px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .time {
+    font-size: 72px;
+    font-weight: 200;
+    color: #ffffff;
+    margin-bottom: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .date {
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 60px;
+  }
+
+  /* 密码输入区域 - 默认隐藏 */
+  .unlock-area {
+    position: fixed;
+    bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .unlock-area.visible {
+    opacity: 1;
+  }
+
+  .unlock-hint {
+    font-size: 13px;
+    color: #444;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  .pin-dots {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .pin-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #333;
+    transition: all 0.15s;
+  }
+
+  .pin-dot.filled {
+    background: #ffffff;
+    border-color: #ffffff;
+  }
+
+  .pin-dot.error {
+    border-color: #ef4444;
+    background: #ef4444;
+    animation: shake 0.4s;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+
+  .pin-input {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    z-index: 10;
+    font-size: 16px;
+    /* invisible but captures keyboard */
+  }
+
+  /* 阻止所有交互的遮罩 */
+  .blocker {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 5;
+  }
+</style>
+</head>
+<body>
+<div class="blocker" id="blocker"></div>
+
+<div class="lobster">🦞</div>
+<div class="name">董 学 九</div>
+<div class="status"><span class="dot"></span>运行中</div>
+<div class="time" id="clock">--:--</div>
+<div class="date" id="date">----</div>
+
+<div class="unlock-area" id="unlockArea">
+  <div class="unlock-hint">输入密码解锁</div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+  </div>
+</div>
+
+<input type="tel" class="pin-input" id="pinInput" autocomplete="off" autofocus>
+
+<script>
+const PIN = '046759';
+let entered = '';
+let showingUnlock = false;
+let errorTimeout = null;
+
+const clockEl = document.getElementById('clock');
+const dateEl = document.getElementById('date');
+const unlockArea = document.getElementById('unlockArea');
+const pinDots = document.querySelectorAll('.pin-dot');
+const pinInput = document.getElementById('pinInput');
+
+// 时钟
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  clockEl.textContent = `${h}:${m}`;
+
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  const y = now.getFullYear();
+  const mo = now.getMonth() + 1;
+  const d = now.getDate();
+  const wd = weekdays[now.getDay()];
+  dateEl.textContent = `${y}年${mo}月${d}日 星期${wd}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// 显示密码区域
+function showUnlock() {
+  if (!showingUnlock) {
+    showingUnlock = true;
+    unlockArea.classList.add('visible');
+  }
+  pinInput.focus();
+}
+
+// 更新圆点
+function updateDots() {
+  pinDots.forEach((dot, i) => {
+    dot.classList.remove('filled', 'error');
+    if (i < entered.length) dot.classList.add('filled');
+  });
+}
+
+// 密码错误动画
+function showError() {
+  pinDots.forEach(dot => {
+    dot.classList.add('error');
+  });
+  entered = '';
+  if (errorTimeout) clearTimeout(errorTimeout);
+  errorTimeout = setTimeout(() => {
+    updateDots();
+  }, 600);
+}
+
+// 解锁成功
+function unlock() {
+  document.body.style.background = '#000';
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#22c55e;font-size:24px;letter-spacing:4px;">已解锁</div>';
+  // 多种方式发送解锁信号
+  fetch('http://127.0.0.1:19753/unlock', { method: 'POST', mode: 'no-cors' }).catch(() => {});
+  // 直接调用 AppleScript 恢复亮度（通过 osascript URL scheme）
+  // 备用：通过 img 标签触发
+  new Image().src = 'http://127.0.0.1:19753/unlock?' + Date.now();
+  setTimeout(() => window.close(), 1000);
+}
+
+// 任何交互都显示密码区
+document.addEventListener('keydown', (e) => {
+  showUnlock();
+
+  if (e.key === 'Backspace') {
+    entered = entered.slice(0, -1);
+    updateDots();
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    entered = '';
+    updateDots();
+    return;
+  }
+
+  if (/^\d$/.test(e.key) && entered.length < 6) {
+    entered += e.key;
+    updateDots();
+
+    if (entered.length === 6) {
+      if (entered === PIN) {
+        unlock();
+      } else {
+        showError();
+      }
+    }
+  }
+});
+
+document.addEventListener('click', showUnlock);
+document.addEventListener('touchstart', showUnlock);
+document.addEventListener('mousemove', showUnlock);
+
+// 保持焦点
+setInterval(() => pinInput.focus(), 500);
+
+// 请求全屏
+function goFullscreen() {
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+
+// 第一次交互时进入全屏
+let fullscreenRequested = false;
+function tryFullscreen() {
+  if (!fullscreenRequested) {
+    fullscreenRequested = true;
+    goFullscreen();
+  }
+}
+
+// 监听退出全屏，尝试重新进入
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && document.getElementById('blocker')) {
+    // 用户按了 Esc 退出全屏，延迟后重新尝试
+    setTimeout(goFullscreen, 500);
+  }
+});
+
+// 页面加载后自动尝试全屏（需要用户交互）
+document.addEventListener('click', tryFullscreen);
+document.addEventListener('keydown', tryFullscreen);
+
+// 阻止退出的快捷键（部分有效）
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) {
+    // 允许数字输入，阻止其他
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
+  }
+});
+</script>
+</body>
+</html>
